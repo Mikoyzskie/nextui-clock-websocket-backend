@@ -26,8 +26,12 @@ socket.on("connection", async (socket) => {
    const isValidPin = await verifyPin(password, user.employee_pin);
 
    if (!isValidPin) {
+    console.log(false);
+
     socket.emit("ERROR", "Pin invalid");
    } else {
+    console.log(true);
+
     socket.emit("USER_LOGGED");
    }
 

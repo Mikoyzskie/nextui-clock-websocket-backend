@@ -29,9 +29,11 @@ socket.on("connection", (socket) => __awaiter(void 0, void 0, void 0, function* 
         if (user.id) {
             const isValidPin = yield (0, directus_1.verifyPin)(password, user.employee_pin);
             if (!isValidPin) {
+                console.log(false);
                 socket.emit("ERROR", "Pin invalid");
             }
             else {
+                console.log(true);
                 socket.emit("USER_LOGGED");
             }
             socket.emit("LOADING_DONE", false);
