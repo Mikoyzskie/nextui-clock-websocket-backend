@@ -51,3 +51,24 @@ export async function getEmployee(id: string): Promise<string> {
 export async function verifyPin(pin: string, hash: string) {
  return apiClient?.request(verifyHash(pin, hash));
 }
+
+export async function getRecentClock(user: number) {
+ try {
+  const data = await apiClient?.request(
+   readItems(attendance, {
+    fields: ["*"],
+    filter: {
+     clock_user: {
+      _eq: user,
+     },
+    },
+    sort: ["-date_created"],
+    limit: 1,
+   })
+  );
+
+  return data;
+ } catch (error) {
+  return error;
+ }
+}

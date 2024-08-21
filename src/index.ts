@@ -1,7 +1,13 @@
 import { createServer } from "http";
-import { getEmployees, getEmployee, verifyPin } from "./directus/directus";
+import {
+ getEmployees,
+ getEmployee,
+ verifyPin,
+ getRecentClock,
+} from "./directus/directus";
 import { Server } from "socket.io";
 
+import { ErrorMessage } from "./common/enums/error.enum";
 import { IEmployees } from "./common/types/types";
 
 const express = require("express");
@@ -19,25 +25,41 @@ socket.on("connection", async (socket) => {
 
  socket.emit("EMPLOYEE_LIST", JSON.stringify(data, null, 2));
 
+ socket.on("RECENT_LOG", async (id: number) => {
+  try {
+   const data = await getRecentClock(id);
+
+   if (!data) {
+    socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
+    return;
+   }
+   return data;
+  } catch (error) {
+   socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
+  }
+ });
+
+ socket.on("CLOCK_IN", async (id: number) => {
+  try {
+  } catch (error) {
+   socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
+  }
+ });
+
  socket.on("USER_CHECK", async (id, password) => {
   const user: IEmployees = JSON.parse(await getEmployee(id));
 
-  if (user.id) {
+  if (user) {
    const isValidPin = await verifyPin(password, user.employee_pin);
 
    if (!isValidPin) {
-    console.log(false);
-
-    socket.emit("ERROR", "Pin invalid");
+    socket.emit("ERROR", ErrorMessage.AUTH_ERROR);
    } else {
-    console.log(true);
-
     socket.emit("USER_LOGGED");
    }
-
-   socket.emit("LOADING_DONE", false);
+   socket.emit("LOADING_DONE");
   } else {
-   socket.emit("ERROR", "User not found");
+   socket.emit("ERROR", ErrorMessage.NOT_FOUND);
   }
  });
 });
