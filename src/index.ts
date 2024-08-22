@@ -4,11 +4,14 @@ import {
  getEmployee,
  verifyPin,
  getRecentClock,
+ checkIpAddress,
 } from "./directus/directus";
 import { Server } from "socket.io";
 
+import moment from "moment";
+
 import { ErrorMessage } from "./common/enums/error.enum";
-import { IEmployees } from "./common/types/types";
+import { IEmployees, RecentLog } from "./common/types/types";
 
 const express = require("express");
 const server = createServer();
@@ -23,28 +26,12 @@ const socket = new Server(server, {
 socket.on("connection", async (socket) => {
  const data = await getEmployees();
 
+ console.log("User connected", socket.id);
+
+ let recentLog = "";
+ let authenticatedUser;
+
  socket.emit("EMPLOYEE_LIST", JSON.stringify(data, null, 2));
-
- socket.on("RECENT_LOG", async (id: number) => {
-  try {
-   const data = await getRecentClock(id);
-
-   if (!data) {
-    socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
-    return;
-   }
-   return data;
-  } catch (error) {
-   socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
-  }
- });
-
- socket.on("CLOCK_IN", async (id: number) => {
-  try {
-  } catch (error) {
-   socket.emit("ERROR", ErrorMessage.SERVER_ERROR);
-  }
- });
 
  socket.on("USER_CHECK", async (id, password) => {
   const user: IEmployees = JSON.parse(await getEmployee(id));
@@ -53,10 +40,21 @@ socket.on("connection", async (socket) => {
    const isValidPin = await verifyPin(password, user.employee_pin);
 
    if (!isValidPin) {
-    socket.emit("ERROR", ErrorMessage.AUTH_ERROR);
-   } else {
-    socket.emit("USER_LOGGED");
+    return socket.emit("ERROR", ErrorMessage.AUTH_ERROR);
    }
+
+   authenticatedUser = user;
+
+   const [data]: RecentLog[] = JSON.parse(
+    await getRecentClock(authenticatedUser.id)
+   );
+
+   const recentTimeIn = moment(data.clock_in_utc);
+   const timeAfter14Hours = recentTimeIn.add(14, "hours");
+   console.log(recentTimeIn);
+
+   socket.emit("USER_LOGGED");
+
    socket.emit("LOADING_DONE");
   } else {
    socket.emit("ERROR", ErrorMessage.NOT_FOUND);

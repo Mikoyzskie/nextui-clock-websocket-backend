@@ -5,4 +5,13 @@ interface IEmployees {
  Clock_Status: boolean;
 }
 
-export { IEmployees };
+interface UserLogDto {
+ id: number;
+ password: string;
+ ipaddress: string;
+ localTime: string;
+ timezoneOffset: string;
+ timezoneClient: string;
+}
+
+export { IEmployees, UserLogDto };

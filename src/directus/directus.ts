@@ -17,7 +17,7 @@ const apiClient = process.env.DIRECTUS_API_KEY
     .with(rest({ credentials: "include" }))
  : undefined;
 
-const attendance: string = "Attendance_Clocks";
+const attendance: any = "Attendance_Clocks";
 
 const employees: any = "Employees";
 
@@ -52,7 +52,7 @@ export async function verifyPin(pin: string, hash: string) {
  return apiClient?.request(verifyHash(pin, hash));
 }
 
-export async function getRecentClock(user: number) {
+export async function getRecentClock(user: number): Promise<string> {
  try {
   const data = await apiClient?.request(
    readItems(attendance, {
@@ -67,8 +67,23 @@ export async function getRecentClock(user: number) {
    })
   );
 
-  return data;
+  return JSON.stringify(data);
  } catch (error) {
-  return error;
+  return JSON.stringify(error, null, 2);
  }
+}
+
+const iplist: any = "time_clock_allowed_ips";
+
+export async function checkIpAddress(ip: string) {
+ return await apiClient?.request(
+  readItems(iplist, {
+   fields: ["IP_Address"],
+   filter: {
+    IP_Address: {
+     _eq: ip,
+    },
+   },
+  })
+ );
 }

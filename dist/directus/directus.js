@@ -12,6 +12,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getEmployees = getEmployees;
 exports.getEmployee = getEmployee;
 exports.verifyPin = verifyPin;
+exports.getRecentClock = getRecentClock;
 const sdk_1 = require("@directus/sdk");
 require("dotenv").config();
 const apiClient = process.env.DIRECTUS_API_KEY
@@ -50,5 +51,25 @@ function getEmployee(id) {
 function verifyPin(pin, hash) {
     return __awaiter(this, void 0, void 0, function* () {
         return apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.verifyHash)(pin, hash));
+    });
+}
+function getRecentClock(user) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const data = yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.readItems)(attendance, {
+                fields: ["*"],
+                filter: {
+                    clock_user: {
+                        _eq: user,
+                    },
+                },
+                sort: ["-date_created"],
+                limit: 1,
+            })));
+            return JSON.stringify(data);
+        }
+        catch (error) {
+            return JSON.stringify(error, null, 2);
+        }
     });
 }
