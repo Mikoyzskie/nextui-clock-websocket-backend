@@ -5,13 +5,17 @@ import {
  verifyPin,
  getRecentClock,
  checkIpAddress,
+ AttendanceIn,
+ ExtendTimeIn,
+ AttendanceOut,
+ ExtendTimeOut,
 } from "./directus/directus";
 import { Server } from "socket.io";
 
 import moment from "moment";
 
 import { ErrorMessage } from "./common/enums/error.enum";
-import { IEmployees, RecentLog } from "./common/types/types";
+import { IEmployees, RecentLog, UserLogDto } from "./common/types/types";
 
 const express = require("express");
 const server = createServer();
@@ -33,11 +37,18 @@ socket.on("connection", async (socket) => {
 
  socket.emit("EMPLOYEE_LIST", JSON.stringify(data, null, 2));
 
- socket.on("USER_CHECK", async (id, password) => {
-  const user: IEmployees = JSON.parse(await getEmployee(id));
+ socket.on("USER_CHECK", async (args: string) => {
+  const argUser: UserLogDto = JSON.parse(args);
+  const user: IEmployees = JSON.parse(await getEmployee(argUser.id));
 
-  if (user) {
-   const isValidPin = await verifyPin(password, user.employee_pin);
+  const isValidIpAddres = await checkIpAddress(argUser.ipaddress);
+
+  if (isValidIpAddres && isValidIpAddres.length === 0) {
+   return socket.emit("ERROR", "IP Address Invalid");
+  }
+
+  if (user && argUser) {
+   const isValidPin = await verifyPin(argUser.password, user.employee_pin);
 
    if (!isValidPin) {
     return socket.emit("ERROR", ErrorMessage.AUTH_ERROR);
@@ -51,13 +62,42 @@ socket.on("connection", async (socket) => {
 
    const recentTimeIn = moment(data.clock_in_utc);
    const timeAfter14Hours = recentTimeIn.add(14, "hours");
-   console.log(recentTimeIn);
+   const has14HoursPassed = moment(argUser.localTime).isAfter(timeAfter14Hours);
 
-   socket.emit("USER_LOGGED");
+   if (data.clock_out_utc) {
+    if (has14HoursPassed) {
+     await AttendanceIn(
+      authenticatedUser.id,
+      argUser.localTime,
+      argUser.timezoneClient,
+      argUser.timezoneOffset
+     );
+     await ExtendTimeIn(authenticatedUser.id);
 
-   socket.emit("LOADING_DONE");
+     socket.emit("USER_LOGGED", "Timed In. Have a nice day!");
+    } else {
+     return socket.emit("ERROR", ErrorMessage.LOGGED);
+    }
+   } else {
+    if (has14HoursPassed) {
+     await AttendanceIn(
+      authenticatedUser.id,
+      argUser.localTime,
+      argUser.timezoneClient,
+      argUser.timezoneOffset
+     );
+     await AttendanceOut(authenticatedUser.id, "No Log");
+
+     socket.emit("USER_LOGGED", "Timed In. Have a nice day!");
+    } else {
+     await AttendanceOut(data.id, argUser.localTime);
+     await ExtendTimeOut(authenticatedUser.id);
+
+     socket.emit("USER_LOGGED", "Timed Out. See you tomorrow!");
+    }
+   }
   } else {
-   socket.emit("ERROR", ErrorMessage.NOT_FOUND);
+   return socket.emit("ERROR", ErrorMessage.NOT_FOUND);
   }
  });
 });

@@ -34,7 +34,7 @@ export async function getEmployees() {
  }
 }
 
-export async function getEmployee(id: string): Promise<string> {
+export async function getEmployee(id: number): Promise<string> {
  try {
   const data = await apiClient?.request(
    readItem(employees, id, {
@@ -86,4 +86,70 @@ export async function checkIpAddress(ip: string) {
    },
   })
  );
+}
+
+const log: any = "Attendance_Clocks";
+
+export async function AttendanceIn(
+ user: number,
+ timein: string,
+ timezone: string,
+ offset: string
+) {
+ try {
+  const data = await apiClient?.request(
+   createItem(log, {
+    clock_user: user,
+    clock_in_utc: timein,
+    local_device_timezone: timezone,
+    timezone_offset: offset,
+   })
+  );
+
+  return data;
+ } catch (error) {
+  return error;
+ }
+}
+
+export async function ExtendTimeIn(user: number) {
+ try {
+  const data = await apiClient?.request(
+   updateItem(employees, user, {
+    Clock_Status: true,
+   })
+  );
+
+  return data;
+ } catch (error) {
+  return error;
+ }
+}
+
+export async function AttendanceOut(id: number, timeout: string) {
+ try {
+  const data = await apiClient?.request(
+   updateItem(log, id, {
+    clock_out_utc: timeout,
+   })
+  );
+
+  return data;
+ } catch (error) {
+  return error;
+ }
+}
+
+export async function ExtendTimeOut(user: number) {
+ try {
+  const data = await apiClient?.request(
+   updateItem(employees, user, {
+    Clock_Status: false,
+   })
+  );
+
+  return data;
+ } catch (error) {
+  return error;
+ }
 }

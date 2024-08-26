@@ -32,10 +32,15 @@ socket.on("connection", (socket) => __awaiter(void 0, void 0, void 0, function* 
     let recentLog = "";
     let authenticatedUser;
     socket.emit("EMPLOYEE_LIST", JSON.stringify(data, null, 2));
-    socket.on("USER_CHECK", (id, password) => __awaiter(void 0, void 0, void 0, function* () {
-        const user = JSON.parse(yield (0, directus_1.getEmployee)(id));
-        if (user) {
-            const isValidPin = yield (0, directus_1.verifyPin)(password, user.employee_pin);
+    socket.on("USER_CHECK", (args) => __awaiter(void 0, void 0, void 0, function* () {
+        const argUser = JSON.parse(args);
+        const user = JSON.parse(yield (0, directus_1.getEmployee)(argUser.id));
+        const isValidIpAddres = yield (0, directus_1.checkIpAddress)(argUser.ipaddress);
+        if (isValidIpAddres && isValidIpAddres.length === 0) {
+            return socket.emit("ERROR", "IP Address Invalid");
+        }
+        if (user && argUser) {
+            const isValidPin = yield (0, directus_1.verifyPin)(argUser.password, user.employee_pin);
             if (!isValidPin) {
                 return socket.emit("ERROR", error_enum_1.ErrorMessage.AUTH_ERROR);
             }
@@ -43,12 +48,32 @@ socket.on("connection", (socket) => __awaiter(void 0, void 0, void 0, function* 
             const [data] = JSON.parse(yield (0, directus_1.getRecentClock)(authenticatedUser.id));
             const recentTimeIn = (0, moment_1.default)(data.clock_in_utc);
             const timeAfter14Hours = recentTimeIn.add(14, "hours");
-            console.log(recentTimeIn);
-            socket.emit("USER_LOGGED");
-            socket.emit("LOADING_DONE");
+            const has14HoursPassed = (0, moment_1.default)(argUser.localTime).isAfter(timeAfter14Hours);
+            if (data.clock_out_utc) {
+                if (has14HoursPassed) {
+                    yield (0, directus_1.AttendanceIn)(authenticatedUser.id, argUser.localTime, argUser.timezoneClient, argUser.timezoneOffset);
+                    yield (0, directus_1.ExtendTimeIn)(authenticatedUser.id);
+                    socket.emit("USER_LOGGED", "Timed In. Have a nice day!");
+                }
+                else {
+                    return socket.emit("ERROR", error_enum_1.ErrorMessage.LOGGED);
+                }
+            }
+            else {
+                if (has14HoursPassed) {
+                    yield (0, directus_1.AttendanceIn)(authenticatedUser.id, argUser.localTime, argUser.timezoneClient, argUser.timezoneOffset);
+                    yield (0, directus_1.AttendanceOut)(authenticatedUser.id, "No Log");
+                    socket.emit("USER_LOGGED", "Timed In. Have a nice day!");
+                }
+                else {
+                    yield (0, directus_1.AttendanceOut)(data.id, argUser.localTime);
+                    yield (0, directus_1.ExtendTimeOut)(authenticatedUser.id);
+                    socket.emit("USER_LOGGED", "Timed Out. See you tomorrow!");
+                }
+            }
         }
         else {
-            socket.emit("ERROR", error_enum_1.ErrorMessage.NOT_FOUND);
+            return socket.emit("ERROR", error_enum_1.ErrorMessage.NOT_FOUND);
         }
     }));
 }));

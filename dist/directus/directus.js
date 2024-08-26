@@ -13,6 +13,11 @@ exports.getEmployees = getEmployees;
 exports.getEmployee = getEmployee;
 exports.verifyPin = verifyPin;
 exports.getRecentClock = getRecentClock;
+exports.checkIpAddress = checkIpAddress;
+exports.AttendanceIn = AttendanceIn;
+exports.ExtendTimeIn = ExtendTimeIn;
+exports.AttendanceOut = AttendanceOut;
+exports.ExtendTimeOut = ExtendTimeOut;
 const sdk_1 = require("@directus/sdk");
 require("dotenv").config();
 const apiClient = process.env.DIRECTUS_API_KEY
@@ -70,6 +75,75 @@ function getRecentClock(user) {
         }
         catch (error) {
             return JSON.stringify(error, null, 2);
+        }
+    });
+}
+const iplist = "time_clock_allowed_ips";
+function checkIpAddress(ip) {
+    return __awaiter(this, void 0, void 0, function* () {
+        return yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.readItems)(iplist, {
+            fields: ["IP_Address"],
+            filter: {
+                IP_Address: {
+                    _eq: ip,
+                },
+            },
+        })));
+    });
+}
+const log = "Attendance_Clocks";
+function AttendanceIn(user, timein, timezone, offset) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const data = yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.createItem)(log, {
+                clock_user: user,
+                clock_in_utc: timein,
+                local_device_timezone: timezone,
+                timezone_offset: offset,
+            })));
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    });
+}
+function ExtendTimeIn(user) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const data = yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.updateItem)(employees, user, {
+                Clock_Status: true,
+            })));
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    });
+}
+function AttendanceOut(id, timeout) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const data = yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.updateItem)(log, id, {
+                clock_out_utc: timeout,
+            })));
+            return data;
+        }
+        catch (error) {
+            return error;
+        }
+    });
+}
+function ExtendTimeOut(user) {
+    return __awaiter(this, void 0, void 0, function* () {
+        try {
+            const data = yield (apiClient === null || apiClient === void 0 ? void 0 : apiClient.request((0, sdk_1.updateItem)(employees, user, {
+                Clock_Status: false,
+            })));
+            return data;
+        }
+        catch (error) {
+            return error;
         }
     });
 }
